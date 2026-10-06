@@ -24,7 +24,13 @@ protected:
     virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) override;
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Context")
+    explicit UGengarStateTreeTask_TriggerAbilityEachTick(const FObjectInitializer& ObjectInitializer)
+        : Super(ObjectInitializer)
+    {
+        bShouldCallTick = true;
+    }
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
     TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, meta=(AllowAbstract = false))

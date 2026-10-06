@@ -28,8 +28,24 @@ void UGengarStateTreeTask_TriggerAbilityEachTick::StateCompleted(FStateTreeExecu
 EStateTreeRunStatus UGengarStateTreeTask_TriggerAbilityEachTick::Tick(FStateTreeExecutionContext& Context,
                                                                       const float DeltaTime)
 {
+    if (!IsValid(AbilitySystemComponent) || !Ability || !AbilitySystemComponent->GetAvatarActor())
+    {
+        return EStateTreeRunStatus::Failed;
+    }
+
+    const auto Handle = UGengarAbilityLibrary::FindAbilitySpecHandleByClass(AbilitySystemComponent, Ability);
+    const auto* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
+    if (!Spec)
+    {
+        return EStateTreeRunStatus::Failed;
+    }
+    if (Spec->IsActive())
+    {
+        return EStateTreeRunStatus::Running;
+    }
+
     FGameplayEventData EventData;
-    UGameplayAbility* OutAbilityInstance;
+    UGameplayAbility* OutAbilityInstance = nullptr;
     UGengarAbilityLibrary::MakeEffectContextHandle(AbilitySystemComponent, ContextPayload, EventData.ContextHandle);
     UGengarAbilityLibrary::ActivateAbilityByClassWithEventData(
         AbilitySystemComponent, Ability,

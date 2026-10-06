@@ -22,6 +22,10 @@ class GENGAR_API UGengarAbilityLibrary : public UBlueprintFunctionLibrary
     GENERATED_BODY()
 
 public:
+    /** Resolve through GAS first; a Pawn's PlayerState does not require a local PlayerController. */
+    UFUNCTION(BlueprintPure, Category="Gengar Ability")
+    static UAbilitySystemComponent* ResolveAbilitySystemComponent(AActor* Actor);
+
     UFUNCTION(BlueprintCallable, Category="Gengar Ability", BlueprintAuthorityOnly)
     static void InitAbilityActorInfo(UAbilitySystemComponent* AbilitySystemComponent, AActor* Owner, AActor* Avatar,
                                      APlayerController* PlayerController);

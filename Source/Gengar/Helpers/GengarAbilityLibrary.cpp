@@ -4,6 +4,39 @@
 #include "GengarAbilityLibrary.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "GameFramework/Controller.h"
+#include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerState.h"
+
+UAbilitySystemComponent* UGengarAbilityLibrary::ResolveAbilitySystemComponent(AActor* Actor)
+{
+    if (!IsValid(Actor))
+    {
+        return nullptr;
+    }
+
+    if (auto* Asc = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Actor))
+    {
+        return Asc;
+    }
+
+    if (const auto* Pawn = Cast<APawn>(Actor))
+    {
+        return UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Pawn->GetPlayerState());
+    }
+
+    if (const auto* Controller = Cast<AController>(Actor))
+    {
+        if (auto* Asc = ResolveAbilitySystemComponent(Controller->GetPawn()))
+        {
+            return Asc;
+        }
+        return UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(Controller->PlayerState);
+    }
+
+    return nullptr;
+}
 
 void UGengarAbilityLibrary::InitAbilityActorInfo(UAbilitySystemComponent* AbilitySystemComponent, AActor* Owner,
                                                  AActor* Avatar, APlayerController* PlayerController)
@@ -25,10 +58,16 @@ void UGengarAbilityLibrary::GetGameplayEffectContext(const FGameplayEffectContex
                                                      FGengarGameplayEffectContext& Context,
                                                      bool& Valid)
 {
+    Valid = false;
+    Context = {};
     if (ContextHandle.IsValid())
     {
-        Context = *static_cast<const FGengarGameplayEffectContext*>(ContextHandle.Get());
-        Valid = true;
+        const auto* RawContext = ContextHandle.Get();
+        if (RawContext->GetScriptStruct()->IsChildOf(FGengarGameplayEffectContext::StaticStruct()))
+        {
+            Context = *static_cast<const FGengarGameplayEffectContext*>(RawContext);
+            Valid = true;
+        }
     }
 }
 
@@ -36,6 +75,11 @@ void UGengarAbilityLibrary::MakeEffectContextHandle(UAbilitySystemComponent* Abi
                                                     const FInstancedStruct& Payload,
                                                     FGameplayEffectContextHandle& Handle)
 {
+    if (!IsValid(AbilitySystemComponent))
+    {
+        Handle = {};
+        return;
+    }
     Handle = AbilitySystemComponent->MakeEffectContext();
     SetEffectContextPayload(Handle, Payload);
 }
@@ -74,9 +118,9 @@ void UGengarAbilityLibrary::SetEffectContextPayload(FGameplayEffectContextHandle
                                                     const FInstancedStruct& Payload)
 {
     auto* Context = Handle.Get();
-    if (auto* GengarContext = static_cast<FGengarGameplayEffectContext*>(Context))
+    if (Context && Context->GetScriptStruct()->IsChildOf(FGengarGameplayEffectContext::StaticStruct()))
     {
-        GengarContext->Payload = Payload;
+        static_cast<FGengarGameplayEffectContext*>(Context)->Payload = Payload;
     }
 }
 
@@ -84,6 +128,10 @@ FGameplayAbilitySpecHandle UGengarAbilityLibrary::FindAbilitySpecHandleByClass(
     const UAbilitySystemComponent* AbilitySystemComponent,
     const TSubclassOf<UGameplayAbility>& AbilityClass)
 {
+    if (!IsValid(AbilitySystemComponent) || !AbilityClass)
+    {
+        return {};
+    }
     for (auto&& Spec : AbilitySystemComponent->GetActivatableAbilities())
     {
         if (Spec.Ability == AbilityClass.GetDefaultObject())
@@ -102,28 +150,59 @@ bool UGengarAbilityLibrary::ActivateAbilityWithEventData(UAbilitySystemComponent
                                                          UGameplayAbility*& AbilityInstance,
                                                          FGengarAbilityEndedCallback OnEnded)
 {
-    if (!ensure(AbilitySystemComponent))
+    AbilityInstance = nullptr;
+    if (!IsValid(AbilitySystemComponent) || !AbilitySystemComponent->AbilityActorInfo.IsValid()
+        || !Handle.IsValid() || !AbilitySystemComponent->FindAbilitySpecFromHandle(Handle))
     {
         return false;
     }
 
-    // return AbilitySystemComponent->TriggerAbilityFromGameplayEvent(
-    //     Handle,
-    //     AbilitySystemComponent->AbilityActorInfo.Get(),
-    //     Tag,
-    //     &EventData,
-    //     *AbilitySystemComponent);
+    const auto* ExistingSpec = AbilitySystemComponent->FindAbilitySpecFromHandle(Handle);
+    if (ExistingSpec->IsActive())
+    {
+        return false;
+    }
 
-    auto Delegate = FOnGameplayAbilityEnded::FDelegate::CreateLambda(
-        [OnEnded](UGameplayAbility*)
+    // Subscribe before activation: an instant ability may finish inside the activation call.
+    auto EndedHandle = MakeShared<FDelegateHandle>();
+    const auto WeakAsc = TWeakObjectPtr<UAbilitySystemComponent>(AbilitySystemComponent);
+    if (OnEnded.IsBound())
+    {
+        *EndedHandle = AbilitySystemComponent->OnAbilityEnded.AddLambda(
+            [WeakAsc, Handle, OnEnded, EndedHandle](const FAbilityEndedData& Data)
+            {
+                if (Data.AbilitySpecHandle != Handle)
+                {
+                    return;
+                }
+                if (auto* Asc = WeakAsc.Get())
+                {
+                    Asc->OnAbilityEnded.Remove(*EndedHandle);
+                }
+                OnEnded.ExecuteIfBound();
+            });
+    }
+
+    const auto bActivated = AbilitySystemComponent->TriggerAbilityFromGameplayEvent(
+        Handle, AbilitySystemComponent->AbilityActorInfo.Get(), Tag, &EventData, *AbilitySystemComponent);
+    if (!bActivated)
+    {
+        AbilitySystemComponent->OnAbilityEnded.Remove(*EndedHandle);
+        return false;
+    }
+
+    if (const auto* Spec = AbilitySystemComponent->FindAbilitySpecFromHandle(Handle))
+    {
+        const auto Instances = Spec->GetAbilityInstances();
+        for (auto* Instance : Instances)
         {
-            OnEnded.ExecuteIfBound();
-        });
-
-    return AbilitySystemComponent->InternalTryActivateAbility(
-        Handle, AbilitySystemComponent->GetPredictionKeyForNewAction(),
-        &AbilityInstance,
-        &Delegate, &EventData);
+            if (IsValid(Instance) && Instance->IsActive())
+            {
+                AbilityInstance = Instance;
+            }
+        }
+    }
+    return true;
 }
 
 bool UGengarAbilityLibrary::ActivateAbilityByClassWithEventData(UAbilitySystemComponent* AbilitySystemComponent,
