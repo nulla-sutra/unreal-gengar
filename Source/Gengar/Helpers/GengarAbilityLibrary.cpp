@@ -41,6 +41,11 @@ UAbilitySystemComponent* UGengarAbilityLibrary::ResolveAbilitySystemComponent(AA
 void UGengarAbilityLibrary::InitAbilityActorInfo(UAbilitySystemComponent* AbilitySystemComponent, AActor* Owner,
                                                  AActor* Avatar, APlayerController* PlayerController)
 {
+    if (!IsValid(AbilitySystemComponent) || !IsValid(Owner))
+    {
+        return;
+    }
+
     AbilitySystemComponent->InitAbilityActorInfo(Owner, Avatar);
 
     if (PlayerController)

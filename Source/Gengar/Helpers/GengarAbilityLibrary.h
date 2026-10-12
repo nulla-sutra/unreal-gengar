@@ -26,7 +26,8 @@ public:
     UFUNCTION(BlueprintPure, Category="Gengar Ability")
     static UAbilitySystemComponent* ResolveAbilitySystemComponent(AActor* Actor);
 
-    UFUNCTION(BlueprintCallable, Category="Gengar Ability", BlueprintAuthorityOnly)
+    /** Initializes local GAS actor references on authority and clients; ability grants remain server-owned. */
+    UFUNCTION(BlueprintCallable, Category="Gengar Ability")
     static void InitAbilityActorInfo(UAbilitySystemComponent* AbilitySystemComponent, AActor* Owner, AActor* Avatar,
                                      APlayerController* PlayerController);
 
