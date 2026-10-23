@@ -1,7 +1,7 @@
 ﻿// Copyright 2019-Present tarnishablec. All Rights Reserved.
 
 
-#include "GengarAbilityLibrary.h"
+#include "Gengar/Helpers/GengarAbilityLibrary.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"

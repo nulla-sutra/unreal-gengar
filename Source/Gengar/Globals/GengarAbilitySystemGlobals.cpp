@@ -1,7 +1,7 @@
 ﻿// Copyright 2019-Present tarnishablec. All Rights Reserved.
 
 
-#include "GengarAbilitySystemGlobals.h"
+#include "Gengar/Globals/GengarAbilitySystemGlobals.h"
 #include "Gengar/ActorInfo/GengarGameplayAbilityActorInfo.h"
 #include "Gengar/Effect/GengarGameplayEffectContext.h"
 

@@ -1,6 +1,6 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "Gengar.h"
+#include "Gengar/Gengar.h"
 
 #define LOCTEXT_NAMESPACE "FGengarModule"
 

@@ -1,7 +1,7 @@
 ﻿// Copyright 2019-Present tarnishablec. All Rights Reserved.
 
 
-#include "GengarStateTreeTask_TriggerAbility.h"
+#include "Gengar/StateTree/GengarStateTreeTask_TriggerAbility.h"
 
 #include "AbilitySystemComponent.h"
 #include "StateTreeExecutionContext.h"

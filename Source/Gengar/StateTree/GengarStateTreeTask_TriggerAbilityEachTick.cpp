@@ -1,7 +1,7 @@
 ﻿// Copyright 2019-Present tarnishablec. All Rights Reserved.
 
 
-#include "GengarStateTreeTask_TriggerAbilityEachTick.h"
+#include "Gengar/StateTree/GengarStateTreeTask_TriggerAbilityEachTick.h"
 
 #include "Gengar/Helpers/GengarAbilityLibrary.h"
 
