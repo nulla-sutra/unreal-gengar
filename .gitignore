@@ -74,4 +74,5 @@ Plugins/**/Intermediate/*
 DerivedDataCache/*
 
 # Local architecture decision records
+/Docs/adr/
 [aA][dD][rR]/
